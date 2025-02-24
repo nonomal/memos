@@ -1,55 +1,85 @@
-import { globalService, userService } from "../../services";
-import { useAppSelector } from "../../store";
-import { VISIBILITY_SELECTOR_ITEMS } from "../../helpers/consts";
-import useI18n from "../../hooks/useI18n";
-import BetaBadge from "../BetaBadge";
-import Selector from "../common/Selector";
-import "../../less/settings/preferences-section.less";
+import { Divider, Option, Select } from "@mui/joy";
+import { observer } from "mobx-react-lite";
+import { userStore } from "@/store/v2";
+import { Visibility } from "@/types/proto/api/v1/memo_service";
+import { UserSetting } from "@/types/proto/api/v1/user_service";
+import { useTranslate } from "@/utils/i18n";
+import { convertVisibilityFromString, convertVisibilityToString } from "@/utils/memo";
+import AppearanceSelect from "../AppearanceSelect";
+import LocaleSelect from "../LocaleSelect";
+import VisibilityIcon from "../VisibilityIcon";
+import WebhookSection from "./WebhookSection";
 
-interface Props {}
+const PreferencesSection = observer(() => {
+  const t = useTranslate();
+  const setting = userStore.state.userSetting as UserSetting;
 
-const localeSelectorItems = [
-  {
-    text: "English",
-    value: "en",
-  },
-  {
-    text: "中文",
-    value: "zh",
-  },
-];
+  const handleLocaleSelectChange = async (locale: Locale) => {
+    await userStore.updateUserSetting(
+      {
+        locale,
+      },
+      ["locale"],
+    );
+  };
 
-const PreferencesSection: React.FC<Props> = () => {
-  const { t } = useI18n();
-  const { setting } = useAppSelector((state) => state.user.user as User);
-
-  const handleLocaleChanged = async (value: string) => {
-    globalService.setLocale(value as Locale);
-    await userService.upsertUserSetting("locale", value);
+  const handleAppearanceSelectChange = async (appearance: Appearance) => {
+    await userStore.updateUserSetting(
+      {
+        appearance,
+      },
+      ["appearance"],
+    );
   };
 
   const handleDefaultMemoVisibilityChanged = async (value: string) => {
-    await userService.upsertUserSetting("memoVisibility", value);
+    await userStore.updateUserSetting(
+      {
+        memoVisibility: value,
+      },
+      ["memo_visibility"],
+    );
   };
 
   return (
-    <div className="section-container preferences-section-container">
-      <label className="form-label">
-        <span className="normal-text">{t("common.language")}:</span>
-        <Selector className="ml-2 w-28" value={setting.locale} dataSource={localeSelectorItems} handleValueChanged={handleLocaleChanged} />
-        <BetaBadge className="ml-2" />
-      </label>
-      <label className="form-label">
-        <span className="normal-text">{t("setting.preference-section.default-memo-visibility")}:</span>
-        <Selector
-          className="ml-2 w-32"
+    <div className="w-full flex flex-col gap-2 pt-2 pb-4">
+      <p className="font-medium text-gray-700 dark:text-gray-500">{t("common.basic")}</p>
+      <div className="w-full flex flex-row justify-between items-center">
+        <span>{t("common.language")}</span>
+        <LocaleSelect value={setting.locale} onChange={handleLocaleSelectChange} />
+      </div>
+      <div className="w-full flex flex-row justify-between items-center">
+        <span>{t("setting.preference-section.theme")}</span>
+        <AppearanceSelect value={setting.appearance as Appearance} onChange={handleAppearanceSelectChange} />
+      </div>
+      <p className="font-medium text-gray-700 dark:text-gray-500">{t("setting.preference")}</p>
+      <div className="w-full flex flex-row justify-between items-center">
+        <span className="truncate">{t("setting.preference-section.default-memo-visibility")}</span>
+        <Select
+          className="!min-w-fit"
           value={setting.memoVisibility}
-          dataSource={VISIBILITY_SELECTOR_ITEMS}
-          handleValueChanged={handleDefaultMemoVisibilityChanged}
-        />
-      </label>
+          startDecorator={<VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility)} />}
+          onChange={(_, visibility) => {
+            if (visibility) {
+              handleDefaultMemoVisibilityChanged(visibility);
+            }
+          }}
+        >
+          {[Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC]
+            .map((v) => convertVisibilityToString(v))
+            .map((item) => (
+              <Option key={item} value={item} className="whitespace-nowrap">
+                {t(`memo.visibility.${item.toLowerCase() as Lowercase<typeof item>}`)}
+              </Option>
+            ))}
+        </Select>
+      </div>
+
+      <Divider className="!my-3" />
+
+      <WebhookSection />
     </div>
   );
-};
+});
 
 export default PreferencesSection;

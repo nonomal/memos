@@ -1,6 +1,3 @@
-# Air (hot reload) generated
-.air
-
 # temp folder
 tmp
 
@@ -8,6 +5,17 @@ tmp
 web/dist
 
 # build folder
-memos-build
+build
 
 .DS_Store
+
+# Jetbrains
+.idea
+
+# Docker Compose Environment File
+.env
+
+dist
+
+# VSCode settings
+.vscode

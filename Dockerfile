@@ -1,31 +1,41 @@
 # Build frontend dist.
-FROM node:16.15.0-alpine AS frontend
+FROM node:20-alpine AS frontend
 WORKDIR /frontend-build
 
-COPY ./web/ .
+COPY . .
 
-RUN yarn
-RUN yarn build
+WORKDIR /frontend-build/web
+
+RUN npm install -g pnpm
+RUN pnpm i --frozen-lockfile
+RUN pnpm build
 
 # Build backend exec file.
-FROM golang:1.18.3-alpine3.16 AS backend
+FROM golang:1.24-alpine AS backend
 WORKDIR /backend-build
 
-RUN apk update
-RUN apk --no-cache add gcc musl-dev
-
 COPY . .
-COPY --from=frontend /frontend-build/dist ./server/dist
+COPY --from=frontend /frontend-build/web/dist /backend-build/server/router/frontend/dist
 
-RUN go build -o memos ./bin/server/main.go
+RUN go build -o memos ./bin/memos/main.go
 
 # Make workspace with above generated files.
-FROM alpine:3.16.0 AS monolithic
+FROM alpine:latest AS monolithic
 WORKDIR /usr/local/memos
 
+RUN apk add --no-cache tzdata
+ENV TZ="UTC"
+
 COPY --from=backend /backend-build/memos /usr/local/memos/
+COPY entrypoint.sh /usr/local/memos/
+
+EXPOSE 5230
 
 # Directory to store the data, which can be referenced as the mounting point.
 RUN mkdir -p /var/opt/memos
+VOLUME /var/opt/memos
 
-ENTRYPOINT ["./memos", "--mode", "prod", "--port", "5230"]
+ENV MEMOS_MODE="prod"
+ENV MEMOS_PORT="5230"
+
+ENTRYPOINT ["./entrypoint.sh", "./memos"]

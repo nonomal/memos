@@ -1,58 +1,45 @@
-import { locationService } from "../services";
-import { useAppSelector } from "../store";
-import { memoSpecialTypes } from "../helpers/filter";
-import Icon from "./Icon";
-import "../less/search-bar.less";
+import { SearchIcon } from "lucide-react";
+import { useState } from "react";
+import { useMemoFilterStore } from "@/store/v1";
+import { useTranslate } from "@/utils/i18n";
+import MemoDisplaySettingMenu from "./MemoDisplaySettingMenu";
 
-interface Props {}
+const SearchBar = () => {
+  const t = useTranslate();
+  const memoFilterStore = useMemoFilterStore();
+  const [queryText, setQueryText] = useState("");
 
-const SearchBar: React.FC<Props> = () => {
-  const memoType = useAppSelector((state) => state.location.query?.type);
-
-  const handleMemoTypeItemClick = (type: MemoSpecType | undefined) => {
-    const { type: prevType } = locationService.getState().query ?? {};
-    if (type === prevType) {
-      type = undefined;
-    }
-    locationService.setMemoTypeQuery(type);
+  const onTextChange = (event: React.FormEvent<HTMLInputElement>) => {
+    setQueryText(event.currentTarget.value);
   };
 
-  const handleTextQueryInput = (event: React.FormEvent<HTMLInputElement>) => {
-    const text = event.currentTarget.value;
-    locationService.setTextQuery(text);
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (queryText !== "") {
+        const words = queryText.split(" ");
+        words.forEach((word) => {
+          memoFilterStore.addFilter({
+            factor: "contentSearch",
+            value: word,
+          });
+        });
+        setQueryText("");
+      }
+    }
   };
 
   return (
-    <div className="search-bar-container">
-      <div className="search-bar-inputer">
-        <Icon.Search className="icon-img" />
-        <input className="text-input" type="text" placeholder="" onChange={handleTextQueryInput} />
-      </div>
-      <div className="quickly-action-wrapper">
-        <div className="quickly-action-container">
-          <p className="title-text">QUICKLY FILTER</p>
-          <div className="section-container types-container">
-            <span className="section-text">Type:</span>
-            <div className="values-container">
-              {memoSpecialTypes.map((t, idx) => {
-                return (
-                  <div key={t.value}>
-                    <span
-                      className={`type-item ${memoType === t.value ? "selected" : ""}`}
-                      onClick={() => {
-                        handleMemoTypeItemClick(t.value as MemoSpecType);
-                      }}
-                    >
-                      {t.text}
-                    </span>
-                    {idx + 1 < memoSpecialTypes.length ? <span className="split-text">/</span> : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="relative w-full h-auto flex flex-row justify-start items-center">
+      <SearchIcon className="absolute left-3 w-4 h-auto opacity-40" />
+      <input
+        className="w-full text-gray-500 dark:text-gray-400 bg-zinc-50 dark:bg-zinc-900 border dark:border-zinc-800 text-sm leading-7 rounded-lg p-1 pl-8 outline-none"
+        placeholder={t("memo.search-placeholder")}
+        value={queryText}
+        onChange={onTextChange}
+        onKeyDown={onKeyDown}
+      />
+      <MemoDisplaySettingMenu className="absolute right-3 top-3" />
     </div>
   );
 };

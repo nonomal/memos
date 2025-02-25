@@ -1,26 +1,33 @@
 package store
 
 import (
-	"database/sql"
+	"sync"
 
-	"github.com/usememos/memos/api"
 	"github.com/usememos/memos/server/profile"
 )
 
-// Store provides database access to all raw objects
+// Store provides database access to all raw objects.
 type Store struct {
-	db      *sql.DB
-	profile *profile.Profile
-	cache   api.CacheService
+	Profile               *profile.Profile
+	driver                Driver
+	workspaceSettingCache sync.Map // map[string]*storepb.WorkspaceSetting
+	userCache             sync.Map // map[int]*User
+	userSettingCache      sync.Map // map[string]*storepb.UserSetting
+	idpCache              sync.Map // map[int]*storepb.IdentityProvider
 }
 
-// New creates a new instance of Store
-func New(db *sql.DB, profile *profile.Profile) *Store {
-	cacheService := NewCacheService()
-
+// New creates a new instance of Store.
+func New(driver Driver, profile *profile.Profile) *Store {
 	return &Store{
-		db:      db,
-		profile: profile,
-		cache:   cacheService,
+		driver:  driver,
+		Profile: profile,
 	}
+}
+
+func (s *Store) GetDriver() Driver {
+	return s.driver
+}
+
+func (s *Store) Close() error {
+	return s.driver.Close()
 }
